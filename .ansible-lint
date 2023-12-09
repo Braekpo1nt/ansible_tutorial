@@ -1,3 +1,7 @@
+# How to configure things: 
+# https://ansible.readthedocs.io/projects/lint/rules/yaml/
+# https://ansible.readthedocs.io/projects/lint/configuring/#specifying-configuration-files
 skip_list:
-  - yaml[trailing-spaces]
-  - yaml[empty-lines]
+  - yaml
+  # - yaml[trailing-spaces]
+  # - yaml[empty-lines]

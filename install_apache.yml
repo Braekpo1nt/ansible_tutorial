@@ -4,37 +4,12 @@
   become: true # enables sudo commands
   tasks:
 
-  - name: update repository index
-    apt:
+  - name: install apache and php package
+    package: # generic package manager (apt for Ubuntu, dnf for CentOS)
+      name: 
+        - "{{ apache_package }}" # the package to install (apt install <name>)
+        - "{{ php_package }}"
+      state: latest
       update_cache: true
-    when: ansible_distribution == "Ubuntu"
 
-  - name: install apache2 package
-    apt: # the module to use
-      name: apache2 # the package to install (apt install <name>)
-      state: latest
-    when: ansible_distribution == "Ubuntu"
-
-  - name: add php support for apache
-    apt:
-      name: libapache2-mod-php
-      state: latest
-    when: ansible_distribution == "Ubuntu"
-
-  - name: update repository index (CentOS)
-    dnf:
-      update_cache: true
-    when: ansible_distribution == "CentOS"
-
-  - name: install apache2 package (CentOS)
-    dnf: # the module to use
-      name: httpd # the package to install (apt install <name>)
-      state: latest
-    when: ansible_distribution == "CentOS"
-
-  - name: add php support for apache (CentOS)
-    dnf:
-      name: php
-      state: latest
-    when: ansible_distribution == "CentOS"
 
