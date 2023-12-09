@@ -4,12 +4,21 @@
   become: true # enables sudo commands
   tasks:
 
-  - name: install apache and php package
-    package: # generic package manager (apt for Ubuntu, dnf for CentOS)
+  - name: install apache and php package (Ubuntu)
+    apt: # generic package manager (apt for Ubuntu, dnf for CentOS)
       name: 
-        - "{{ apache_package }}" # the package to install (apt install <name>)
-        - "{{ php_package }}"
+        - apache2 # the package to install (apt install <name>)
+        - libapache2-mod-php
       state: latest
       update_cache: true
+    when: ansible_distribution == "Ubuntu"
 
+  - name: install apache and php package (CentOS)
+    dnf:
+      name: 
+        - httpd
+        - php
+      state: latest
+      update_cache: true
+    when: ansible_distribution == "CentOS"
 
