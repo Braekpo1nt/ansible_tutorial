@@ -39,6 +39,15 @@
         - php
       state: present
     when: ansible_distribution == "CentOS"
+  
+  - name: copy default html file for site
+    tags: apache,apache2,httpd
+    copy: # copy files
+      src: default_site.html # assumes subdir of `files/`
+      dest: /var/www/html/index.html
+      owner: root
+      group: root
+      mode: 0644 # file permissions
 
 - hosts: db_servers
   become: true
