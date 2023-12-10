@@ -9,7 +9,7 @@
       name: 
         - apache2 # the package to install (apt install <name>)
         - libapache2-mod-php
-      state: latest
+      state: present
       update_cache: true
     when: ansible_distribution == "Ubuntu"
 
@@ -18,7 +18,7 @@
       name: 
         - httpd
         - php
-      state: latest
+      state: present
       update_cache: true
     when: ansible_distribution == "CentOS"
 
