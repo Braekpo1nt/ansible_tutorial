@@ -35,6 +35,32 @@
         owner: root
         group: root
 
+
+- hosts: all
+  become: true
+  tasks: 
+  
+  - name: create simone user
+    tags: always
+    user:
+      name: simone
+      groups: root
+  
+  - name: add ssh key for simone
+    tags: always
+    authorized_key:
+      user: simone
+      key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIC69pL4VGZZNjO8+2jGn898+9lQFCfsdRIQTSRDwzybn ansible" # ansible public key
+  
+  - name: add sudoers file for simone
+    tags: always
+    copy:
+      src: sudoer_simone
+      dest: /etc/sudoers.d/simone
+      owner: root
+      group: root
+      mode: 0440
+
 - hosts: web_servers # only against web_servers hosts
   become: true
   tasks:
@@ -65,6 +91,30 @@
       owner: root
       group: root
       mode: 0644 # file permissions
+  
+  - name: start httpd (CentOS)
+    tags: apache,centos,httpd
+    service: # allows us to manage services on our linux servers
+      name: httpd
+      state: started # starts the service
+      enabled: yes # enables the service
+    when: ansible_distribution == "CentOS"
+  
+  - name: change e-mail address for admin
+    tags: apache,centos,httpd
+    lineinfile: 
+      path: /etc/httpd/conf/httpd.conf
+      regexp: '^ServerAdmin'
+      line: ServerAdmin sombody@somwhere.net
+    when: ansible_distribution == "CentOS"
+    register: httpd # capture the state in a variable
+  
+  - name: restart httpd (CentOS)
+    tags: apache,centos,httpd
+    service:
+      name: httpd
+      state: restarted # restarts the service
+    when: httpd.changed # reference the variable that was registered above in "change e-mail address for admin". Thus, this will only run if the httpd is changed (i.e. the above play ran successfully)
 
 - hosts: db_servers
   become: true
