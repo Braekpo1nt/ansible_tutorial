@@ -1,0 +1,66 @@
+---
+# this is meant to be run for a fresh server we just set up, which has never had ansible run against it before, and we want to add the initial configuration to the server so our other ansible scripts can run against it. 
+# because `ansible.cfg` has `remote_user = simone`, successive ansible scripts don't need the `--ask-become-pass` to run
+# All you need to do to the server is add the `ansible.pub` ssh public key to its `~/.ssh/authorized_keys` file (the `ansible.pub` file is configured in `ansible.cfg` e.g. `private_key_file = ~/.ssh/ansible`)
+
+- hosts: all
+  become: true # enables sudo commands
+  pre_tasks: # these tasks need to be run before anything else
+  # both of the following tasks makes sure both CentOS and Ubuntu servers are fully up to date. Good to do always. 
+  - name: install updates (CentOS)
+    tags: always
+    dnf:
+      update_only: true
+      update_cache: true
+    when: ansible_distribution == "CentOS"
+  
+  - name: install updates (Ubuntu)
+    tags: always
+    apt:
+      upgrade: dist
+      update_cache: true
+    when: ansible_distribution == "Ubuntu"
+
+- hosts: workstations # yes, this is provisioning our local workstation (which is running ansible)
+  become: true
+  tasks:
+  
+    - name: install unzip
+      package:
+        name: unzip
+    
+    - name: install terraform
+      unarchive:
+        src: https://releases.hashicorp.com/terraform/1.6.5/terraform_1.6.5_linux_amd64.zip
+        dest: /usr/local/bin
+        remote_src: yes # tells ansible that this is a remote source and you don't need to search the files directory for it
+        mode: 0755
+        owner: root
+        group: root
+
+
+- hosts: all
+  become: true
+  tasks: 
+  
+  - name: create simone user # this is the user we will want to add to the server so that our other scripts can be run by it
+    tags: always
+    user:
+      name: simone
+      groups: root
+  
+  - name: add ssh key for simone
+    tags: always
+    authorized_key:
+      user: simone
+      key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIC69pL4VGZZNjO8+2jGn898+9lQFCfsdRIQTSRDwzybn ansible" # ansible public key
+  
+  # you can remove this file from the remote to revoke simone's privileges
+  - name: add sudoers file for simone
+    tags: always
+    copy:
+      src: sudoer_simone
+      dest: /etc/sudoers.d/simone
+      owner: root
+      group: root
+      mode: 0440

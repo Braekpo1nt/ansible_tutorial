@@ -7,15 +7,17 @@
   - name: install updates (CentOS)
     tags: always
     dnf:
-      update_only: true
-      update_cache: true
+      # update_only: true # this doesn't need to be here because the bootstrap.yml does this already
+      update_cache: true # still want to make sure the repository indexes are not stale (otherwise the playbook could fail)
+    changed_when: false # doesn't consider this a "change". useful because this will change every time we run this playbook, so it keeps the output clear
     when: ansible_distribution == "CentOS"
   
   - name: install updates (Ubuntu)
     tags: always
     apt:
-      upgrade: dist
-      update_cache: true
+      # upgrade: dist # this doesn't need to be here because the bootstrap.yml does this already
+      update_cache: true # still want to make sure the repository indexes are not stale (otherwise the playbook could fail)
+    changed_when: false # doesn't consider this a "change". useful because this will change every time we run this playbook, so it keeps the output clear
     when: ansible_distribution == "Ubuntu"
 
 - hosts: workstations # yes, this is provisioning our local workstation (which is running ansible)
@@ -40,26 +42,12 @@
   become: true
   tasks: 
   
-  - name: create simone user
-    tags: always
-    user:
-      name: simone
-      groups: root
-  
+  # this is still here as a placeholder in case this key is ever compromized or you want to change it. Just add `state: absent` to this line to remove the old key, and a copy of this to add the new key
   - name: add ssh key for simone
     tags: always
     authorized_key:
       user: simone
       key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIC69pL4VGZZNjO8+2jGn898+9lQFCfsdRIQTSRDwzybn ansible" # ansible public key
-  
-  - name: add sudoers file for simone
-    tags: always
-    copy:
-      src: sudoer_simone
-      dest: /etc/sudoers.d/simone
-      owner: root
-      group: root
-      mode: 0440
 
 - hosts: web_servers # only against web_servers hosts
   become: true
