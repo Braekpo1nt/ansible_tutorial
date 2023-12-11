@@ -1,20 +1,27 @@
-- name: install apache and php package (Ubuntu)
-  tags: apache,apache2,ubuntu # tags are used to target plays which match the tags
-  apt: # generic package manager (apt for Ubuntu, dnf for CentOS)
+- name: install apache and php packages
+  tags: apache,httpd,php # tags are used to target plays which match the tags
+  package: # generic package manager (apt for Ubuntu, dnf for CentOS)
     name: 
-      - apache2 # the package to install (apt install <name>)
-      - libapache2-mod-php
+      - "{{ apache_package_name }}"
+      - "{{ php_package_name }}"
     state: present
-  when: ansible_distribution == "Ubuntu"
 
-- name: install apache and php package (CentOS)
+- name: start and enable apache service
+  tags: apache,httpd
+  service: # allows us to manage services on our linux servers
+    name: "{{ apache_service }}"
+    state: started # starts the service
+    enabled: yes # enables the service
+
+- name: change e-mail address for admin
   tags: apache,centos,httpd
-  dnf:
-    name: 
-      - httpd
-      - php
-    state: present
+  lineinfile: 
+    path: /etc/httpd/conf/httpd.conf
+    regexp: '^ServerAdmin'
+    line: ServerAdmin sombody@somwhere.com
   when: ansible_distribution == "CentOS"
+  notify: restart_apache # notify the `restart_apache` role
+
 
 - name: copy default html file for site
   tags: apache,apache2,httpd
@@ -24,27 +31,3 @@
     owner: root
     group: root
     mode: 0644 # file permissions
-
-- name: start httpd (CentOS)
-  tags: apache,centos,httpd
-  service: # allows us to manage services on our linux servers
-    name: httpd
-    state: started # starts the service
-    enabled: yes # enables the service
-  when: ansible_distribution == "CentOS"
-
-- name: change e-mail address for admin
-  tags: apache,centos,httpd
-  lineinfile: 
-    path: /etc/httpd/conf/httpd.conf
-    regexp: '^ServerAdmin'
-    line: ServerAdmin sombody@somwhere.net
-  when: ansible_distribution == "CentOS"
-  register: httpd # capture the state in a variable
-
-- name: restart httpd (CentOS)
-  tags: apache,centos,httpd
-  service:
-    name: httpd
-    state: restarted # restarts the service
-  when: httpd.changed # reference the variable that was registered above in "change e-mail address for admin". Thus, this will only run if the httpd is changed (i.e. the above play ran successfully)

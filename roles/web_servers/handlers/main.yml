@@ -1,0 +1,4 @@
+- name: restart_apache # matches the `notify` line from `../tasks/main.yml`'s `change e-mail address for admin` play. 
+  service:
+    name: "{{ apache_service }}"
+    state: restarted
