@@ -1,0 +1,136 @@
+---
+# the first version before I learned about roles and how to clean it up 
+
+- hosts: all
+  become: true # enables sudo commands
+  pre_tasks: # these tasks need to be run before anything else
+  # both of the following tasks makes sure both CentOS and Ubuntu servers are fully up to date. Good to do always. 
+  - name: update repository index (CentOS)
+    tags: always
+    dnf:
+      # update_only: true # this doesn't need to be here because the bootstrap.yml does this already
+      update_cache: true # still want to make sure the repository indexes are not stale (otherwise the playbook could fail)
+    changed_when: false # doesn't consider this a "change". useful because this will change every time we run this playbook, so it keeps the output clear
+    when: ansible_distribution == "CentOS"
+  
+  - name: update repository index (Ubuntu)
+    tags: always
+    apt:
+      # upgrade: dist # this doesn't need to be here because the bootstrap.yml does this already
+      update_cache: true # still want to make sure the repository indexes are not stale (otherwise the playbook could fail)
+    changed_when: false # doesn't consider this a "change". useful because this will change every time we run this playbook, so it keeps the output clear
+    when: ansible_distribution == "Ubuntu"
+
+- hosts: workstations # yes, this is provisioning our local workstation (which is running ansible)
+  become: true
+  tasks:
+  
+    - name: install unzip
+      package:
+        name: unzip
+    
+    - name: install terraform
+      unarchive:
+        src: https://releases.hashicorp.com/terraform/1.6.5/terraform_1.6.5_linux_amd64.zip
+        dest: /usr/local/bin
+        remote_src: yes # tells ansible that this is a remote source and you don't need to search the files directory for it
+        mode: 0755
+        owner: root
+        group: root
+
+
+- hosts: all
+  become: true
+  tasks: 
+  
+  # this is still here as a placeholder in case this key is ever compromized or you want to change it. Just add `state: absent` to this line to remove the old key, and a copy of this to add the new key
+  - name: add ssh key for simone
+    tags: always
+    authorized_key:
+      user: simone
+      key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIC69pL4VGZZNjO8+2jGn898+9lQFCfsdRIQTSRDwzybn ansible" # ansible public key
+
+- hosts: web_servers # only against web_servers hosts
+  become: true
+  tasks:
+  
+    - name: install apache and php package (Ubuntu)
+      tags: apache,apache2,ubuntu # tags are used to target plays which match the tags
+      apt: # generic package manager (apt for Ubuntu, dnf for CentOS)
+        name: 
+          - apache2 # the package to install (apt install <name>)
+          - libapache2-mod-php
+        state: present
+      when: ansible_distribution == "Ubuntu"
+
+    - name: install apache and php package (CentOS)
+      tags: apache,centos,httpd
+      dnf:
+        name: 
+          - httpd
+          - php
+        state: present
+      when: ansible_distribution == "CentOS"
+    
+    - name: copy default html file for site
+      tags: apache,apache2,httpd
+      copy: # copy files
+        src: default_site.html # assumes subdir of `files/`
+        dest: /var/www/html/index.html
+        owner: root
+        group: root
+        mode: 0644 # file permissions
+    
+    - name: start httpd (CentOS)
+      tags: apache,centos,httpd
+      service: # allows us to manage services on our linux servers
+        name: httpd
+        state: started # starts the service
+        enabled: yes # enables the service
+      when: ansible_distribution == "CentOS"
+    
+    - name: change e-mail address for admin
+      tags: apache,centos,httpd
+      lineinfile: 
+        path: /etc/httpd/conf/httpd.conf
+        regexp: '^ServerAdmin'
+        line: ServerAdmin sombody@somwhere.net
+      when: ansible_distribution == "CentOS"
+      register: httpd # capture the state in a variable
+    
+    - name: restart httpd (CentOS)
+      tags: apache,centos,httpd
+      service:
+        name: httpd
+        state: restarted # restarts the service
+      when: httpd.changed # reference the variable that was registered above in "change e-mail address for admin". Thus, this will only run if the httpd is changed (i.e. the above play ran successfully)
+
+- hosts: db_servers
+  become: true
+  tasks:
+  
+    - name: install mariadb package (CentOS)
+      tags: centos,db,mariadb
+      dnf:
+        name: mariadb
+        state: present
+      when: ansible_distribution == "CentOS"
+    
+    - name: install mariadb package (Ubuntu)
+      tags: db,mariadb,ubuntu
+      apt:
+        name: mariadb-server
+        state: present
+      when: ansible_distribution == "Ubuntu"
+
+- hosts: file_servers
+  become: true
+  tasks:
+    
+    - name: install samba package
+      tags: samba
+      package:
+        name: samba
+        state: present
+
+
